@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <meta name="description" content="Experimento de portfólio com Web Speech API: leitor de texto com diferentes vozes e idiomas.">
+    <title>Leitor de Texto com Web Speech API</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="estilo.css">
+</head>
+
+<body>
+    <header class="topo">
+        <div class="topo__conteudo">
+            <h1 class="topo__titulo">Leitor de Texto com Web Speech API</h1>
+            <p class="topo__subtitulo">
+                Projeto simples que converte texto digitado em áudio utilizando as vozes do seu navegador.
+            </p>
+        </div>
+    </header>
+
+    <main class="container">
+        <section class="card">
+            <h2 class="card__titulo">Experimente diferentes vozes e idiomas</h2>
+
+            <label for="listaVoz" class="card__label">Selecione a voz / idioma:</label>
+            <select id="listaVoz" class="card__select"></select>
+
+            <label for="txtDigitado" class="card__label">Digite o texto que deseja ouvir:</label>
+            <textarea id="txtDigitado" rows="5" class="card__textarea"
+                placeholder="Digite aqui o texto que será lido em voz alta..."></textarea>
+
+            <div class="card__acoes">
+                <button id="btnFalar" class="btn btn--primario">Reproduzir</button>
+                <button id="btnParar" class="btn btn--secundario" disabled>Parar</button>
+            </div>
+
+            <p class="card__aviso">
+                Obs.: a qualidade e a quantidade de vozes disponíveis dependem do seu navegador e sistema operacional.
+            </p>
+        </section>
+    </main>
+
+    <footer class="rodape">
+        <p class="rodape__texto">
+            Kleber Nascimento • Baseado em Web Speech API • Atualizado em 2024
+        </p>
+    </footer>
+
+    <script>
+        const txtDigitado = document.querySelector('#txtDigitado');
+        const listaVoz = document.querySelector('#listaVoz');
+        const btnFalar = document.querySelector('#btnFalar');
+        const btnParar = document.querySelector('#btnParar');
+        const synth = window.speechSynthesis;
+        let voices = [];
+        let utteranceAtual = null;
+
+        function populateVoices() {
+            voices = synth.getVoices();
+            const selectedIndex = listaVoz.selectedIndex < 0 ? 0 : listaVoz.selectedIndex;
+            listaVoz.innerHTML = '';
+
+            voices.forEach((voice) => {
+                const listItem = document.createElement('option');
+                listItem.textContent = `${voice.name} (${voice.lang})`;
+                listItem.setAttribute('data-lang', voice.lang);
+                listItem.setAttribute('data-name', voice.name);
+                listaVoz.appendChild(listItem);
+            });
+
+            listaVoz.selectedIndex = selectedIndex;
+        }
+
+        populateVoices();
+        if (typeof speechSynthesis !== 'undefined') {
+            speechSynthesis.onvoiceschanged = populateVoices;
+        }
+
+        function atualizarEstadoBotoes() {
+            const temTexto = txtDigitado.value.trim().length > 0;
+            const estaFalando = synth.speaking;
+            btnFalar.disabled = !temTexto;
+            btnParar.disabled = !estaFalando;
+        }
+
+        btnFalar.addEventListener('click', () => {
+            const texto = txtDigitado.value.trim();
+            if (!texto) {
+                txtDigitado.focus();
+                return;
+            }
+
+            if (synth.speaking) {
+                synth.cancel();
+            }
+
+            const toSpeak = new SpeechSynthesisUtterance(texto);
+            const selectedVoice = listaVoz.selectedOptions[0];
+            if (selectedVoice) {
+                const selectedVoiceName = selectedVoice.getAttribute('data-name');
+                const voiceEncontrada = voices.find((voice) => voice.name === selectedVoiceName);
+                if (voiceEncontrada) {
+                    toSpeak.voice = voiceEncontrada;
+                }
+            }
+
+            toSpeak.volume = 0.9; // volume máximo 0 ~ 1
+            toSpeak.rate = 1; // velocidade da fala
+
+            toSpeak.onstart = () => {
+                utteranceAtual = toSpeak;
+                atualizarEstadoBotoes();
+            };
+
+            toSpeak.onend = () => {
+                utteranceAtual = null;
+                atualizarEstadoBotoes();
+            };
+
+            toSpeak.onerror = () => {
+                utteranceAtual = null;
+                atualizarEstadoBotoes();
+            };
+
+            synth.speak(toSpeak);
+            atualizarEstadoBotoes();
+        });
+
+        btnParar.addEventListener('click', () => {
+            if (synth.speaking || synth.pending) {
+                synth.cancel();
+                utteranceAtual = null;
+                atualizarEstadoBotoes();
+            }
+        });
+
+        txtDigitado.addEventListener('input', atualizarEstadoBotoes);
+    </script>
+</body>
+
+</html>
